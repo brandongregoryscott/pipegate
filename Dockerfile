@@ -16,4 +16,4 @@ RUN uv sync --frozen
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Workers must be one atm.
-CMD ["uvicorn", "pipegate.server:main", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "1"]
+CMD ["uvicorn", "pipegate.server:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "1"]
