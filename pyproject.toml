@@ -9,7 +9,9 @@ dependencies = [
     "fastapi[standard]>=0.115.6",
     "httpx>=0.28.1",
     "orjson>=3.10.12",
+    "pydantic-settings>=2.7.0",
     "pydantic>=2.10.3",
+    "pyjwt>=2.10.1",
     "typer>=0.15.1",
     "uvicorn>=0.32.1",
     "websockets>=14.1",
@@ -20,3 +22,6 @@ dev = [
     "mypy>=1.13.0",
     "ruff>=0.8.2",
 ]
+
+[tool.mypy]
+plugins = ['pydantic.mypy']

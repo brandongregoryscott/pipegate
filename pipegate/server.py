@@ -5,12 +5,14 @@ import collections
 import uuid
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import AsyncGenerator
+from typing import AsyncGenerator, cast, get_args
 
 import async_timeout
+import jwt
 import orjson
 import uvicorn
 from fastapi import (
+    Depends,
     FastAPI,
     HTTPException,
     Request,
@@ -18,9 +20,52 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from pydantic import ValidationError
+from pydantic import UUID4, ValidationError
 
-from .schemas import BufferGateRequest, BufferGateResponse
+from .schemas import (
+    BufferGateRequest,
+    BufferGateResponse,
+    JWTPayload,
+    Methods,
+    Settings,
+)
+
+
+def get_settings(request: Request) -> Settings:
+    return request.app.extra["settings"]
+
+
+def verify_jwt_uuid_match(
+    connection_id: UUID4,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> JWTPayload:
+    """
+    Verify the JWT token, validate its structure, and ensure the 'uuid' matches the path parameter.
+    """
+    authorization: str | None = request.headers.get("Authorization")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header",
+        )
+
+    token = authorization.split(" ", 1)[1]
+
+    decoded_payload = jwt.decode(
+        token,
+        settings.jwt_secret.get_secret_value(),
+        algorithms=settings.jwt_algorithms,
+    )
+    payload = JWTPayload.model_validate(decoded_payload)
+
+    # Verify that the token's UUID (sub) matches the path parameter connection_id
+    if payload.sub != connection_id:
+        raise HTTPException(
+            status_code=403, detail="Token UUID does not match path UUID"
+        )
+
+    return payload
 
 
 def create_app() -> FastAPI:
@@ -30,15 +75,15 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI application instance.
     """
-    buffers: collections.defaultdict[uuid.UUID, asyncio.Queue[BufferGateRequest]] = (
+    buffers: collections.defaultdict[UUID4, asyncio.Queue[BufferGateRequest]] = (
         collections.defaultdict(asyncio.Queue)
     )
-    futures: collections.defaultdict[uuid.UUID, asyncio.Future[BufferGateResponse]] = (
+    futures: collections.defaultdict[UUID4, asyncio.Future[BufferGateResponse]] = (
         collections.defaultdict(asyncio.Future)
     )
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         """
         Define the application's lifespan events.
 
@@ -48,6 +93,8 @@ def create_app() -> FastAPI:
         Yields:
             AsyncGenerator[None, None]: Yields control back to FastAPI.
         """
+        app.extra["settings"] = Settings()
+
         try:
             yield
         finally:
@@ -62,12 +109,13 @@ def create_app() -> FastAPI:
 
     @app.api_route(
         "/{connection_id}/{path_slug:path}",
-        methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+        methods=list(get_args(Methods)),
     )
     async def handle_http_request(
-        connection_id: uuid.UUID,
+        connection_id: UUID4,
         request: Request,
         path_slug: str = "",
+        payload: JWTPayload = Depends(verify_jwt_uuid_match),
     ) -> Response:
         """
         Handle incoming HTTP requests and forward them to the corresponding WebSocket connection.
@@ -86,7 +134,7 @@ def create_app() -> FastAPI:
             await buffers[connection_id].put(
                 BufferGateRequest(
                     correlation_id=correlation_id,
-                    method=request.method,
+                    method=cast(Methods, request.method),
                     url_path=path_slug,
                     url_query=orjson.dumps(
                         {k: v for k, v in request.query_params.multi_items()}
@@ -123,7 +171,7 @@ def create_app() -> FastAPI:
 
     @app.websocket("/{connection_id}")
     async def handle_websocket(
-        connection_id: uuid.UUID,
+        connection_id: UUID4,
         websocket: WebSocket,
     ):
         """
