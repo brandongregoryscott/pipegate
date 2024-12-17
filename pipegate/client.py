@@ -13,27 +13,30 @@ app = typer.Typer()
 
 
 @app.command()
-def start_server(port: int, server_url: str):
-    """Start the Buffer Gate Server.
+def start_client(port: int, server_url: str):
+    """
+    Start the PipeGate Client to expose a local server.
 
     Args:
-        port (int): The port number on which the server will run.
+        port (int): The port number on which the local server is running.
         server_url (str): The WebSocket server URL to connect to.
     """
     asyncio.run(main(port, server_url))
 
 
-async def request_and_response(
+async def handle_request(
     target: str,
     request: BufferGateRequest,
     http_client: httpx.AsyncClient,
     ws_client: ClientConnection,
 ) -> None:
-    """Send an HTTP request based on the BufferGateRequest and forward the response via WebSocket.
+    """
+    Process an incoming request from the server, forward it to the local server,
+    and send back the response via WebSocket.
 
     Args:
-        target (str): The target URL for the HTTP request.
-        request (BufferGateRequest): The request payload containing HTTP details.
+        target (str): The target URL for the local HTTP server.
+        request (BufferGateRequest): The incoming request data.
         http_client (httpx.AsyncClient): The HTTP client for making requests.
         ws_client (ClientConnection): The WebSocket client for sending responses.
     """
@@ -43,52 +46,71 @@ async def request_and_response(
             url=f"{target}/{request.url_path}",
             headers=orjson.loads(request.headers),
             params=orjson.loads(request.url_query),
-            content=request.body,
+            content=request.body.encode(),
         )
-        await ws_client.send(
-            BufferGateResponse(
-                correlation_id=request.correlation_id,
-                headers=orjson.dumps(dict(response.headers)).decode(),
-                body=response.content.decode(),
-                status_code=response.status_code,
-            ).model_dump_json()
+        response_payload = BufferGateResponse(
+            correlation_id=request.correlation_id,
+            headers=orjson.dumps(dict(response.headers)).decode(),
+            body=response.text,
+            status_code=response.status_code,
         )
     except Exception as e:
-        print(e)
-        await ws_client.send(
-            BufferGateResponse(
-                correlation_id=request.correlation_id,
-                headers="",
-                body="",
-                status_code=504,
-            ).model_dump_json()
+        typer.secho(
+            f"Error processing request {request.correlation_id}: {e}",
+            fg=typer.colors.RED,
         )
+        response_payload = BufferGateResponse(
+            correlation_id=request.correlation_id,
+            headers="",
+            body="",
+            status_code=504,
+        )
+
+    await ws_client.send(response_payload.model_dump_json())
 
 
 async def main(port: int, server_url: str) -> None:
-    """Main function to handle WebSocket connections and route HTTP requests.
+    """
+    Establish a WebSocket connection to the PipeGate server and handle incoming requests.
 
     Args:
-        port (int): The port number for the HTTP server.
+        port (int): The port number of the local HTTP server to expose.
         server_url (str): The WebSocket server URL to connect to.
     """
-    target = f"http://0.0.0.0:{port}"
+    target = f"http://127.0.0.1:{port}"
+    typer.secho(
+        f"Connecting to server at {server_url}...",
+        fg=typer.colors.BLUE,
+    )
 
-    async with (
-        connect(server_url) as ws_client,
-        httpx.AsyncClient() as http_client,
-        asyncio.TaskGroup() as tg,
-    ):
-        async for message in ws_client:
-            request = BufferGateRequest.model_validate_json(message)
-            tg.create_task(
-                request_and_response(
-                    target,
-                    request,
-                    http_client,
-                    ws_client,
-                )
-            )
+    try:
+        async with connect(server_url) as ws_client, httpx.AsyncClient() as http_client:
+            typer.secho("Connected to server.", fg=typer.colors.GREEN)
+            async with asyncio.TaskGroup() as task_group:
+                while True:
+                    try:
+                        message = await ws_client.recv()
+                        request = BufferGateRequest.model_validate_json(message)
+                        task_group.create_task(
+                            handle_request(target, request, http_client, ws_client)
+                        )
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        typer.secho(
+                            f"Error receiving message: {e}",
+                            fg=typer.colors.RED,
+                        )
+    except (ConnectionRefusedError, OSError) as e:
+        typer.secho(
+            f"Failed to connect to the server: {e}",
+            fg=typer.colors.RED,
+        )
+    except Exception as e:
+        typer.secho(
+            f"An unexpected error occurred: {e}",
+            fg=typer.colors.RED,
+        )
 
 
 if __name__ == "__main__":
