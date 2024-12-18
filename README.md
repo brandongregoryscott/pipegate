@@ -1,5 +1,6 @@
 # PipeGate
-PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "poor man's ngrok." It allows you to expose your local servers to the internet, providing a simple way to create tunnels from your local machine to the external world. PipeGate is an excellent tool for developers who want to understand how tunneling services like ngrok work under the hood or need a customizable alternative hosted on their own infrastructure.
+
+PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "poor man's ngrok." It allows you to expose your local servers to the internet, providing a simple way to create tunnels from your local machine to the external world. 
 
 ## Table of Contents
 
@@ -10,6 +11,7 @@ PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "
   - [Install Dependencies](#install-dependencies)
   - [Alternatively, Install via pip](#alternatively-install-via-pip)
 - [Usage](#usage)
+  - [Generating a JWT Bearer Token](#generating-a-jwt-bearer-token)
   - [Starting the Server](#starting-the-server)
   - [Starting the Client](#starting-the-client)
   - [Example Workflow](#example-workflow)
@@ -19,6 +21,7 @@ PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 - [Contact](#contact)
+- [FAQ](#faq)
 
 ## Features
 
@@ -49,6 +52,14 @@ cd pipegate
 
 ### Install Dependencies
 
+Install the required dependencies using pip:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Alternatively, Install via pip
+
 You can also install PipeGate directly from GitHub using pip:
 
 ```bash
@@ -57,74 +68,101 @@ pip install git+https://github.com/janbjorge/pipegate.git
 
 ## Usage
 
+### Generating a JWT Bearer Token
+
+PipeGate uses JWT (JSON Web Tokens) for authenticating client connections. To establish a secure tunnel, you need to generate a JWT bearer token that includes a unique connection ID.
+
+1. **Generate the JWT Token:**
+
+   Run the authentication helper script to generate a JWT bearer token and a corresponding connection ID.
+
+   ```bash
+   python -m pipegate.auth
+   ```
+
+   **Output Example:**
+
+   ```
+   Connection-id: 123e4567-e89b-12d3-a456-426614174000
+   JWT Bearer:    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+
+   - **Connection-id:** A unique UUID representing your tunnel connection.
+   - **JWT Bearer:** The JWT token you will use to authenticate your requests to the PipeGate server.
+
+2. **Store the Credentials:**
+
+   Keep the `Connection-id` and `JWT Bearer` token secure, as they are required to establish a connection between the server and client.
+
 ### Starting the Server
 
 Deploy the PipeGate server on your infrastructure. By default, the server runs on `http://0.0.0.0:8000`.
 
-```bash
-python -m pipegate.server
-```
+1. **Configure the Server:**
 
-**Optional:** To customize the host and port, modify the `uvicorn.run` parameters in `server.py` or set environment variables if implemented.
+   Ensure that the server is configured to use the same JWT secret and algorithms as used when generating the JWT token. You can modify the `Settings` in your server configuration as needed, typically found in `server.py` or your configuration files.
+
+2. **Run the Server:**
+
+   ```bash
+   python -m pipegate.server
+   ```
+
+   **Optional:** To customize the host and port, modify the `uvicorn.run` parameters in `server.py` or set environment variables if implemented.
 
 ### Starting the Client
 
 Run the PipeGate client on your local machine to expose a local server.
 
 ```bash
-python -m pipegate.client --port 8000 --server_url wss://yourserver.com/<connection_id>
+python -m pipegate.client --target-url http://127.0.0.1:9090 --server_url wss://yourserver.com/<connection_id>
 ```
 
 **Parameters:**
 
-- `--port`: Port where your local server is running (e.g., `8000`).
+- `--target`: The local target (e.g., `http://127.0.0.1:9090`).
 - `--server_url`: WebSocket URL of your PipeGate server, including the unique connection ID.
 
 **Example:**
 
 ```bash
-python -m pipegate.client --port 8000 --server_url wss://example.com/123e4567-e89b-12d3-a456-426614174000
+python -m pipegate.client --target-url http://127.0.0.1:9090 --server_url wss://example.com/123e4567-e89b-12d3-a456-426614174000
 ```
 
 ### Example Workflow
 
-1. **Start the Server:**
+1. **Generate a JWT Bearer Token:**
+
+   ```bash
+   python -m pipegate.auth
+   ```
+
+   *Sample Output:*
+
+   ```
+   Connection-id: 123e4567-e89b-12d3-a456-426614174000
+   JWT Bearer:    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+
+2. **Start the Server:**
+
+   Ensure your server is configured with the appropriate JWT settings, then run:
 
    ```bash
    python -m pipegate.server
    ```
 
-2. **Start the Client:**
+3. **Start the Client:**
+
+   Use the generated `Connection-id` to start the client:
 
    ```bash
-   python -m pipegate.client --port 8000 --server_url wss://yourserver.com/<connection_id>
+   python -m pipegate.client --port 8000 --server_url wss://yourserver.com/123e4567-e89b-12d3-a456-426614174000
    ```
 
-   Replace `<connection_id>` with a generated UUID to establish a unique tunnel.
+4. **Expose Local Server:**
 
-3. **Expose Local Server:**
-
-   Point your external webhooks or services to `https://yourserver.com/<connection_id>/path`, and PipeGate will forward the requests to your local server running on port `8000`.
-
-### Public Server (Temporary)
-
-For demonstration purposes, a PipeGate server is currently running at [https://pipegate.fly.dev/](https://pipegate.fly.dev/). Feel free to use this server to test PipeGate functionality. This server will remain operational until the Fly.io credits are exhausted. 🤷‍♂️
-
-**Usage Example with Public Server:**
-
-1. **Start the Client:**
-
-   ```bash
-   python -m pipegate.client --port 8000 --server_url wss://pipegate.fly.dev/123e4567-e89b-12d3-a456-426614174000
-   ```
-
-   Replace `123e4567-e89b-12d3-a456-426614174000` with a generated UUID.
-
-2. **Expose Local Server:**
-
-   Point your external webhooks or services to `https://pipegate.fly.dev/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `8000`.
-
-*Note: The public server at [https://pipegate.fly.dev/](https://pipegate.fly.dev/) is intended for temporary use only. Users are encouraged to set up their own PipeGate server for persistent and secure tunneling.*
+   Point your external webhooks or services to `https://yourserver.com/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `8000`.
 
 ## Configuration
 
@@ -132,7 +170,7 @@ PipeGate is highly customizable. You can modify the server and client configurat
 
 **Possible Configuration Enhancements:**
 
-- **Authentication:** Implement API keys or tokens to manage client connections.
+- **Authentication:** PipeGate uses JWT for authenticating client connections. Ensure that the JWT settings (`jwt_secret`, `jwt_algorithms`) in both server and client are consistent.
 - **Timeouts:** Adjust request and connection timeouts based on your requirements.
 - **Logging:** Configure logging levels and outputs to monitor activity.
 
@@ -140,12 +178,12 @@ PipeGate is highly customizable. You can modify the server and client configurat
 
 ## Security Considerations
 
-**PipeGate** has minimal to no built-in security features. It is essential to implement your own security measures to protect your infrastructure when using PipeGate. Consider the following:
+**PipeGate** has minimal to no built-in security features beyond JWT authentication. It is essential to implement your own security measures to protect your infrastructure when using PipeGate. Consider the following:
 
-- **Authentication:** Ensure that only authorized clients can connect to your PipeGate server by implementing authentication mechanisms such as API keys or tokens.
+- **Authentication:** Ensure that only authorized clients can connect to your PipeGate server by using strong JWT secrets and managing token distribution securely.
 - **Network Security:** Utilize firewalls, VPNs, or other network security tools to restrict access to your PipeGate server.
 - **Input Validation:** Apply thorough validation and filtering of incoming requests to prevent malicious activities.
-- **Encryption:** Consider setting up HTTPS to encrypt data in transit, especially if transmitting sensitive information.
+- **Encryption:** Ensure that HTTPS is set up to encrypt data in transit, especially if transmitting sensitive information.
 - **Monitoring and Auditing:** Regularly monitor and audit your PipeGate setup to detect and respond to potential threats.
 - **Resource Limiting:** Implement rate limiting or throttling to prevent abuse and ensure fair usage of server resources.
 
@@ -202,10 +240,19 @@ This project is licensed under the [MIT License](LICENSE).
 For any questions or suggestions, feel free to open an issue.
 
 ## FAQ
-   **Q:** How do I generate a unique connection ID?
 
-   **A:** You can use Python's `uuid` module or any UUID generator to create a unique ID.
+**Q:** How do I generate a unique connection ID?
 
-   **Q:** Can I run multiple clients with the same server?
+**A:** You can use Python's `uuid` module or any UUID generator to create a unique ID. Alternatively, use the provided authentication helper to generate a connection ID along with a JWT bearer token.
 
-   **A:** Yes, each client should use a unique connection ID to establish separate tunnels.
+**Q:** Can I run multiple clients with the same server?
+
+**A:** Yes, each client should use a unique connection ID and corresponding JWT bearer token to establish separate tunnels.
+
+**Q:** How do I renew my JWT bearer token?
+
+**A:** Generate a new JWT bearer token using the authentication helper script and update both the server and client configurations accordingly.
+
+**Q:** What happens if my JWT token expires?
+
+**A:** If the JWT token expires, the client will no longer be able to authenticate with the server. Generate a new token and restart the client with the updated token.

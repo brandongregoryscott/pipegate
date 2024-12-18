@@ -13,15 +13,15 @@ app = typer.Typer()
 
 
 @app.command()
-def start_client(port: int, server_url: str):
+def start_client(target_url: str, server_url: str):
     """
     Start the PipeGate Client to expose a local server.
 
     Args:
-        port (int): The port number on which the local server is running.
+        target_url (str): The server to route incoming traffic to.
         server_url (str): The WebSocket server URL to connect to.
     """
-    asyncio.run(main(port, server_url))
+    asyncio.run(main(target_url, server_url))
 
 
 async def handle_request(
@@ -69,7 +69,7 @@ async def handle_request(
     await ws_client.send(response_payload.model_dump_json())
 
 
-async def main(port: int, server_url: str) -> None:
+async def main(target_url: str, server_url: str) -> None:
     """
     Establish a WebSocket connection to the PipeGate server and handle incoming requests.
 
@@ -77,7 +77,6 @@ async def main(port: int, server_url: str) -> None:
         port (int): The port number of the local HTTP server to expose.
         server_url (str): The WebSocket server URL to connect to.
     """
-    target = f"http://127.0.0.1:{port}"
     typer.secho(
         f"Connecting to server at {server_url}...",
         fg=typer.colors.BLUE,
@@ -92,7 +91,12 @@ async def main(port: int, server_url: str) -> None:
                         message = await ws_client.recv()
                         request = BufferGateRequest.model_validate_json(message)
                         task_group.create_task(
-                            handle_request(target, request, http_client, ws_client)
+                            handle_request(
+                                target_url,
+                                request,
+                                http_client,
+                                ws_client,
+                            )
                         )
                     except asyncio.CancelledError:
                         break

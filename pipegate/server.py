@@ -93,7 +93,7 @@ def create_app() -> FastAPI:
         Yields:
             AsyncGenerator[None, None]: Yields control back to FastAPI.
         """
-        app.extra["settings"] = Settings()
+        app.extra["settings"] = Settings(_cli_parse_args=False)
 
         try:
             yield
