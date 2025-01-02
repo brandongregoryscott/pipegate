@@ -1,6 +1,6 @@
 # PipeGate
 
-PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "poor man's ngrok." It allows you to expose your local servers to the internet, providing a simple way to create tunnels from your local machine to the external world. 
+PipeGate is a lightweight, self-hosted proxy built with FastAPI, designed as a "poor man's ngrok." It allows you to expose your local servers to the internet, providing a simple way to create tunnels from your local machine to the external world.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ Before you begin, ensure you have met the following requirements:
 
 - **Python 3.12+**
 - [Git](https://git-scm.com/)
-- [pip](https://pip.pypa.io/en/stable/installation/)
+- [uv](https://github.com/astral-sh/uv)
 
 ## Installation
 
@@ -52,10 +52,10 @@ cd pipegate
 
 ### Install Dependencies
 
-Install the required dependencies using pip:
+Install the required dependencies using `uv`:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Alternatively, Install via pip
@@ -115,18 +115,18 @@ Deploy the PipeGate server on your infrastructure. By default, the server runs o
 Run the PipeGate client on your local machine to expose a local server.
 
 ```bash
-python -m pipegate.client --target-url http://127.0.0.1:9090 --server_url wss://yourserver.com/<connection_id>
+python -m pipegate.client --target-url http://127.0.0.1:9090 --server-url wss://yourserver.com/<connection_id>
 ```
 
 **Parameters:**
 
-- `--target`: The local target (e.g., `http://127.0.0.1:9090`).
-- `--server_url`: WebSocket URL of your PipeGate server, including the unique connection ID.
+- `--target-url`: The local target (e.g., `http://127.0.0.1:9090`).
+- `--server-url`: WebSocket URL of your PipeGate server, including the unique connection ID.
 
 **Example:**
 
 ```bash
-python -m pipegate.client --target-url http://127.0.0.1:9090 --server_url wss://example.com/123e4567-e89b-12d3-a456-426614174000
+python -m pipegate.client --target-url http://127.0.0.1:9090 --server-url wss://example.com/123e4567-e89b-12d3-a456-426614174000
 ```
 
 ### Example Workflow
@@ -157,12 +157,12 @@ python -m pipegate.client --target-url http://127.0.0.1:9090 --server_url wss://
    Use the generated `Connection-id` to start the client:
 
    ```bash
-   python -m pipegate.client --port 8000 --server_url wss://yourserver.com/123e4567-e89b-12d3-a456-426614174000
+   python -m pipegate.client --target-url http://127.0.0.1:9090 --server-url wss://yourserver.com/123e4567-e89b-12d3-a456-426614174000
    ```
 
 4. **Expose Local Server:**
 
-   Point your external webhooks or services to `https://yourserver.com/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `8000`.
+   Point your external webhooks or services to `https://yourserver.com/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `9090`.
 
 ## Configuration
 
@@ -196,6 +196,7 @@ Contributions are welcome! Whether you're fixing bugs, improving documentation, 
 ### How to Contribute
 
 1. **Fork the Repository:** Click the "Fork" button at the top right of the repository page.
+
 2. **Clone Your Fork:**
 
    ```bash
@@ -210,6 +211,7 @@ Contributions are welcome! Whether you're fixing bugs, improving documentation, 
    ```
 
 4. **Make Your Changes:** Implement your feature or fix.
+
 5. **Commit Your Changes:**
 
    ```bash
