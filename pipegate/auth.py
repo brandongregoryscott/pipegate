@@ -10,7 +10,7 @@ from .schemas import JWTPayload, Settings
 
 def make_jwt_bearer() -> None:
     settings = Settings()
-    connection_id = settings.connection_id or uuid.uuid4()
+    connection_id = settings.connection_id or uuid.uuid4().hex
     expiration_days = settings.expiration_days or 21
 
     jwt_payload = JWTPayload(
