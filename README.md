@@ -37,7 +37,7 @@ Before you begin, ensure you have met the following requirements:
 
 - **Python 3.12+**
 - [Git](https://git-scm.com/)
-- [pip](https://pip.pypa.io/en/stable/installation/)
+- [uv](https://github.com/astral-sh/uv)
 
 ## Installation
 
@@ -52,10 +52,10 @@ cd pipegate
 
 ### Install Dependencies
 
-Install the required dependencies using pip:
+Install the required dependencies using `uv`:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Alternatively, Install via pip
@@ -162,7 +162,7 @@ python -m pipegate.client http://127.0.0.1:9090 wss://yourserver.com/123e4567-e8
 
 4. **Expose Local Server:**
 
-   Point your external webhooks or services to `https://yourserver.com/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `8000`.
+   Point your external webhooks or services to `https://yourserver.com/123e4567-e89b-12d3-a456-426614174000/path`, and PipeGate will forward the requests to your local server running on port `9090`.
 
 ## Configuration
 
@@ -196,6 +196,7 @@ Contributions are welcome! Whether you're fixing bugs, improving documentation, 
 ### How to Contribute
 
 1. **Fork the Repository:** Click the "Fork" button at the top right of the repository page.
+
 2. **Clone Your Fork:**
 
    ```bash
@@ -210,6 +211,7 @@ Contributions are welcome! Whether you're fixing bugs, improving documentation, 
    ```
 
 4. **Make Your Changes:** Implement your feature or fix.
+
 5. **Commit Your Changes:**
 
    ```bash
