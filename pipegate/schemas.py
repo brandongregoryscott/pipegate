@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import UUID4, BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,8 +43,8 @@ class JWTPayload(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(cli_parse_args=True)
-    expiration_days: int = Field(alias="PIPEGATE_EXPIRATION_DAYS")
-    connection_id: str = Field(alias="PIPEGATE_CONNECTION_ID")
-    port: int = Field(alias="PIPEGATE_PORT")
+    expiration_days: Optional[int] = Field(alias="PIPEGATE_EXPIRATION_DAYS", default=None)
+    connection_id: Optional[str] = Field(alias="PIPEGATE_CONNECTION_ID", default=None)
+    port: Optional[int] = Field(alias="PIPEGATE_PORT", default=None)
     jwt_secret: SecretStr = Field(alias="PIPEGATE_JWT_SECRET")
     jwt_algorithms: list[str] = Field(alias="PIPEGATE_JWT_ALGORITHMS")
