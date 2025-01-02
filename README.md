@@ -90,6 +90,19 @@ PipeGate uses JWT (JSON Web Tokens) for authenticating client connections. To es
    - **Connection-id:** A unique UUID representing your tunnel connection.
    - **JWT Bearer:** The JWT token you will use to authenticate your requests to the PipeGate server.
 
+   **Optional:** To customize the connection id, you can set the `PIPEGATE_CONNECTION_ID` environment variable when running the `auth` script. This may be useful if your PipeGate server is hosting multiple tunnels for well-known endpoints or APIs.
+
+   ```bash
+   PIPEGATE_CONNECTION_ID=my-api python -m pipegate.auth
+   ```
+
+   **Output Example:**
+
+   ```
+   Connection-id: my-api
+   JWT Bearer:    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+
 2. **Store the Credentials:**
 
    Keep the `Connection-id` and `JWT Bearer` token secure, as they are required to establish a connection between the server and client.

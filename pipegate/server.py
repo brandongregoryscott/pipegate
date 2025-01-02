@@ -36,7 +36,7 @@ def get_settings(request: Request) -> Settings:
 
 
 def verify_jwt_uuid_match(
-    connection_id: UUID4,
+    connection_id: str,
     request: Request,
     settings: Settings = Depends(get_settings),
 ) -> JWTPayload:
@@ -112,7 +112,7 @@ def create_app() -> FastAPI:
         methods=list(get_args(Methods)),
     )
     async def handle_http_request(
-        connection_id: UUID4,
+        connection_id: str,
         request: Request,
         path_slug: str = "",
         payload: JWTPayload = Depends(verify_jwt_uuid_match),
@@ -121,7 +121,7 @@ def create_app() -> FastAPI:
         Handle incoming HTTP requests and forward them to the corresponding WebSocket connection.
 
         Args:
-            connection_id (uuid.UUID): The unique identifier for the connection.
+            connection_id (str): The unique identifier for the connection.
             request (Request): The incoming HTTP request.
             path_slug (str, optional): Additional path after the connection ID. Defaults to "".
 
@@ -171,14 +171,14 @@ def create_app() -> FastAPI:
 
     @app.websocket("/{connection_id}")
     async def handle_websocket(
-        connection_id: UUID4,
+        connection_id: str,
         websocket: WebSocket,
     ):
         """
         Manage WebSocket connections for sending and receiving data.
 
         Args:
-            connection_id (uuid.UUID): The unique identifier for the WebSocket connection.
+            connection_id (str): The unique identifier for the WebSocket connection.
             websocket (WebSocket): The WebSocket connection object.
         """
         await websocket.accept()
